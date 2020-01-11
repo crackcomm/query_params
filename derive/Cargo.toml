@@ -1,6 +1,6 @@
 [package]
 name = "query-params-derive"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
   "Alessio Coltellacci <lightplay8@gmail.com>",
   "Łukasz Kurowski <crackcomm@gmail.com>"

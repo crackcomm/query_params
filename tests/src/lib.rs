@@ -1,15 +1,18 @@
 #[macro_use]
+extern crate serde_derive;
+#[macro_use]
 extern crate query_params_derive;
 extern crate query_params_trait;
 
 #[cfg(test)]
 use query_params_trait::QueryParams;
 
-#[derive(QueryParams)]
+#[derive(QueryParams, Serialize)]
 struct ExampleStruct {
     pub server: String,
     pub id: i32,
     #[query(rename = "running")]
+    #[serde(default)]
     is_running: bool,
     tags: Vec<String>,
 }

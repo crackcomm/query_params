@@ -136,6 +136,9 @@ fn get_print_fields(fields: &syn::Fields) -> Result<Vec<syn::export::TokenStream
             let ident = &field.ident;
             let mut name = ident.as_ref().unwrap().clone();
             for attr in &field.attrs {
+                if path_join(&attr.path).as_str() != "query" {
+                    continue;
+                }
                 if let syn::Meta::List(list) = attr.parse_meta().unwrap() {
                     for nested in &list.nested {
                         if let syn::NestedMeta::Meta(syn::Meta::NameValue(syn::MetaNameValue {
@@ -151,16 +154,19 @@ fn get_print_fields(fields: &syn::Fields) -> Result<Vec<syn::export::TokenStream
                                 path => {
                                     return Err(Error::new(
                                         nested.span(),
-                                        format!("Unrecognized attribute: {}", path),
+                                        format!("query: Unrecognized attribute: {}.", path),
                                     ))
                                 }
                             }
                         } else {
-                            return Err(Error::new(nested.span(), "Unrecognized nested attribute"));
+                            return Err(Error::new(
+                                nested.span(),
+                                "query: Unrecognized nested attribute.",
+                            ));
                         }
                     }
                 } else {
-                    return Err(Error::new(attr.span(), "Unrecognized attribute"));
+                    return Err(Error::new(attr.span(), "query: Unrecognized attribute."));
                 }
             }
             Ok(match path.as_str() {
