@@ -8,7 +8,6 @@ repository = "https://github.com/crackcomm/query_params"
 documentation = "https://docs.rs/query-params-trait"
 categories = ["development-tools"]
 keywords = ["derive", "macro", "http", "trait"]
-readme = "README.md"
 license = "MIT"
 
 [dependencies]
