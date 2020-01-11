@@ -1,6 +1,6 @@
 [package]
 name = "query-params-tests"
-version = "0.0.2"
+version = "1.0.0"
 authors = [
   "Alessio Coltellacci <lightplay8@gmail.com>",
   "Łukasz Kurowski <crackcomm@gmail.com>"
@@ -16,7 +16,6 @@ keywords = ["derive", "macro", "http"]
 license = "MIT"
 
 [dependencies]
-query-params-derive = { version = "^0.1.0", path = "../derive" }
-query-params-trait = { version = "^0.0.1", path = "../trait" }
 serde = "^1.0.0"
 serde_derive = "^1.0.0"
+query-params-trait = { version = "^1.0.0", path = "../trait" }

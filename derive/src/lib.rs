@@ -224,3 +224,13 @@ fn primitive_to_query_params(
         buf.push_str(format!("{}={}&", stringify!(#name), self.#ident).as_str())
     }
 }
+
+fn to_query_params_with(
+    name: syn::Ident,
+    ident: &Option<syn::Ident>,
+    with: syn::Ident,
+) -> syn::export::TokenStream2 {
+    quote! {
+        buf.push_str(format!("{}={}&", stringify!(#name), #with::from(self.#ident)).as_str())
+    }
+}

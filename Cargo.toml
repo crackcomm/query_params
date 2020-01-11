@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "derive",
+  "serialize",
   "tests",
   "trait"
 ]
