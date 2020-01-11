@@ -1,16 +1,19 @@
-[![Build Status](https://travis-ci.org/NotBad4U/query_params.svg?branch=master)](https://travis-ci.org/NotBad4U/query_params)
+[![Build Status](https://travis-ci.org/crackcomm/query_params.svg?branch=master)](https://travis-ci.org/crackcomm/query_params)
 [![Rust version]( https://img.shields.io/badge/rust-stable-blue.svg)]()
 
 
 # QueryParams Derive
 
-[Rust][rust] custom derive to automatically implement serialization to http query params for arbitrary structs. A simple `#[derive(QueryParams)]` will generate a function `to_query_params` for your struct.
+[Rust][rust] custom derive to automatically implement serialization to http query params for arbitrary structs. A simple `#[derive(QueryParams)]` will generate a function `query_params` for your struct.
 
 ## How it Works
 
 ```rust
 #[macro_use]
-extern crate query_params;
+extern crate query_params_derive;
+extern crate query_params_trait;
+
+use query_params_trait::QueryParams;
 
 #[derive(QueryParams)]
 struct PullRequestsParametersApi {
@@ -29,7 +32,7 @@ fn main() {
         state: vec!["open".to_string(), "closed".to_string()],
     }
 
-    println!("{}", pr.to_query_params()); // => ?page=2&sort=true&direction=asc&state=open,closed
+    println!("{}", pr.query_params()); // => page=2&sort=true&direction=asc&state=open,closed
 }
 ```
 
