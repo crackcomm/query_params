@@ -70,19 +70,24 @@ extern crate syn;
 extern crate quote;
 
 use proc_macro::TokenStream;
-use syn::{Body, VariantData};
 
-#[proc_macro_derive(QueryParams)]
+use syn::{spanned::Spanned, Error, Result};
+
+#[proc_macro_derive(QueryParams, attributes(query))]
 pub fn derive_query_params(input: TokenStream) -> TokenStream {
-    let input = input.to_string();
+    match derive_query_params_impl(input) {
+        Ok(v) => v,
+        Err(e) => TokenStream::from(e.to_compile_error()),
+    }
+}
 
-    let ast = syn::parse_derive_input(&input).unwrap();
+fn derive_query_params_impl(input: TokenStream) -> Result<TokenStream> {
+    let ast: syn::DeriveInput = syn::parse(input)?;
 
     let name = &ast.ident;
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-    let query_params = gen_serialization_query_params(&ast.body);
-
+    let query_params = gen_serialization_query_params(&ast)?;
     let gen = quote! {
         impl #impl_generics query_params_trait::QueryParams for #name #ty_generics #where_clause {
             fn query_params(&self) -> String {
@@ -90,28 +95,19 @@ pub fn derive_query_params(input: TokenStream) -> TokenStream {
             }
         }
     };
-
-    gen.parse().expect(
-        format!(
-            "An error occurred when parsing the tokens generate for {} struct",
-            name
-        )
-        .as_str(),
-    )
+    Ok(gen.into())
 }
 
-/// yolo
-fn gen_serialization_query_params(body: &Body) -> quote::Tokens {
-    match *body {
-        Body::Struct(VariantData::Struct(ref fs)) => {
-            let query_params: Vec<quote::Tokens> = get_print_fields(fs);
-
+fn gen_serialization_query_params(ast: &syn::DeriveInput) -> Result<syn::export::TokenStream2> {
+    match &ast.data {
+        syn::Data::Struct(data) => {
+            let query_params = get_print_fields(&data.fields)?;
             if query_params.len() == 0 {
-                quote! {
+                Ok(quote! {
                     String::default()
-                }
+                })
             } else {
-                quote! {
+                Ok(quote! {
                     let mut buf = String::new();
 
                     (#(#query_params),*);
@@ -120,45 +116,79 @@ fn gen_serialization_query_params(body: &Body) -> quote::Tokens {
                     buf.truncate(len_query_params - 1); // remove trailing ampersand
 
                     buf
-                }
+                })
             }
         }
-        Body::Struct(VariantData::Tuple(_)) => {
-            panic!("#[derive(QueryParams)] is only defined for structs, not tuple")
-        }
-        Body::Struct(VariantData::Unit) => {
-            panic!("#[derive(QueryParams)] is only defined for structs, not unit")
-        }
-        Body::Enum(_) => panic!("#[derive(QueryParams)] is only defined for structs, not enum"),
+        _ => Err(Error::new(ast.span(), "Not a struct")),
     }
 }
 
 /// something cool
-fn get_print_fields(fields: &Vec<syn::Field>) -> Vec<quote::Tokens> {
+fn get_print_fields(fields: &syn::Fields) -> Result<Vec<syn::export::TokenStream2>> {
     fields
         .iter()
-        .map(|f| (&f.ident, &f.ty))
-        .map(|(ident, ty)| match ty {
-            &syn::Ty::Path(_, ref path) => (ident, extract_type_name(path)),
-            _ => unimplemented!(),
+        .map(|field| {
+            let path = if let syn::Type::Path(ref typath) = &field.ty {
+                path_join(&typath.path)
+            } else {
+                return Err(Error::new(field.span(), "Type not handled"));
+            };
+            let ident = &field.ident;
+            let mut name = ident.as_ref().unwrap().clone();
+            for attr in &field.attrs {
+                if let syn::Meta::List(list) = attr.parse_meta().unwrap() {
+                    for nested in &list.nested {
+                        if let syn::NestedMeta::Meta(syn::Meta::NameValue(syn::MetaNameValue {
+                            path,
+                            lit: syn::Lit::Str(lit_str),
+                            ..
+                        })) = nested
+                        {
+                            match path_join(&path).as_str() {
+                                "rename" => {
+                                    name = quote::format_ident!("{}", lit_str.value());
+                                }
+                                path => {
+                                    return Err(Error::new(
+                                        nested.span(),
+                                        format!("Unrecognized attribute: {}", path),
+                                    ))
+                                }
+                            }
+                        } else {
+                            return Err(Error::new(nested.span(), "Unrecognized nested attribute"));
+                        }
+                    }
+                } else {
+                    return Err(Error::new(attr.span(), "Unrecognized attribute"));
+                }
+            }
+            Ok(match path.as_str() {
+                "Vec" => vec_to_query_params(name, ident),
+                "Option" => option_to_query_params(name, ident),
+                _ => primitive_to_query_params(name, ident),
+            })
         })
-        .map(|(ident, path)| match path {
-            "Vec" => vec_to_query_params(ident),
-            "Option" => option_to_query_params(ident),
-            _ => primitive_to_query_params(ident),
-        })
-        .collect()
+        .collect::<Result<_>>()
 }
 
-#[inline]
-fn extract_type_name(path: &syn::Path) -> &str {
-    path.segments.last().unwrap().ident.as_ref()
+/// Creates a string from type path.
+fn path_join(path: &syn::Path) -> String {
+    segments_join(path.segments.iter())
 }
 
-fn vec_to_query_params(ident: &Option<syn::Ident>) -> quote::Tokens {
+/// Joins iterator of path segments into a string.
+fn segments_join<'a, I: Iterator<Item = &'a syn::PathSegment>>(segments: I) -> String {
+    segments
+        .map(|segment| segment.ident.to_string())
+        .collect::<Vec<_>>()
+        .join("::")
+}
+
+fn vec_to_query_params(name: syn::Ident, ident: &Option<syn::Ident>) -> syn::export::TokenStream2 {
     quote! {
         buf.push_str((format!("{}={}&",
-            stringify!(#ident),
+            stringify!(#name),
             self.#ident
                 .iter()
                 .fold(String::new(), |acc, ref val| acc + &val.to_string() + ","))
@@ -169,16 +199,22 @@ fn vec_to_query_params(ident: &Option<syn::Ident>) -> quote::Tokens {
     }
 }
 
-fn option_to_query_params(ident: &Option<syn::Ident>) -> quote::Tokens {
+fn option_to_query_params(
+    name: syn::Ident,
+    ident: &Option<syn::Ident>,
+) -> syn::export::TokenStream2 {
     quote! {
         if self.#ident.is_some() {
-            buf.push_str(format!("{}={}&", stringify!(#ident), self.#ident.as_ref().unwrap()).as_str())
+            buf.push_str(format!("{}={}&", stringify!(#name), self.#ident.as_ref().unwrap()).as_str())
         }
     }
 }
 
-fn primitive_to_query_params(ident: &Option<syn::Ident>) -> quote::Tokens {
+fn primitive_to_query_params(
+    name: syn::Ident,
+    ident: &Option<syn::Ident>,
+) -> syn::export::TokenStream2 {
     quote! {
-        buf.push_str(format!("{}={}&", stringify!(#ident), self.#ident).as_str())
+        buf.push_str(format!("{}={}&", stringify!(#name), self.#ident).as_str())
     }
 }

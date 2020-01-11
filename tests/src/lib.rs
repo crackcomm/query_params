@@ -2,13 +2,15 @@
 extern crate query_params_derive;
 extern crate query_params_trait;
 
+#[cfg(test)]
 use query_params_trait::QueryParams;
 
 #[derive(QueryParams)]
 struct ExampleStruct {
     pub server: String,
     pub id: i32,
-    running: bool,
+    #[query(rename = "running")]
+    is_running: bool,
     tags: Vec<String>,
 }
 
@@ -17,7 +19,7 @@ fn test_ser_query_params_with_primitive_types() {
     let example_struct = ExampleStruct {
         server: "All might".to_string(),
         id: 42,
-        running: true,
+        is_running: true,
         tags: vec!["latest".to_string(), "linux".to_string()],
     };
 
