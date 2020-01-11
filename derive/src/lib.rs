@@ -13,7 +13,10 @@
 //! ```ignore,
 //! #[macro_use]
 //! extern crate query_params;
-//! 
+//! extern crate query_params_trait;
+//!
+//! use query_params_trait::QueryParams;
+//!
 //! #[derive(QueryParams)]
 //! struct PullRequestsParametersApi {
 //!     page: i32,
@@ -22,15 +25,15 @@
 //!     state: Vec<String>,
 //!     // .. other interesting fields ..
 //! }
-//! 
+//!
 //! let pr = PullRequestsParametersApi {
 //!     page: 2,
 //!     sort: true,
 //!     direction: "asc".to_string(),
 //!     state: vec!["open".to_string(), "closed".to_string()],
 //! };
-//! 
-//! pr.to_query_params();
+//!
+//! pr.query_params();
 //! ```
 //!
 //! ## What that generate
@@ -45,10 +48,10 @@
 //!     state: Vec<String>,
 //!     // .. other interesting fields ..
 //! }
-//! 
+//!
 //! // Code generate
 //! impl PullRequestsParametersApi {
-//!     fn to_query_params(&self) -> String {
+//!     fn query_params(&self) -> String {
 //!         let mut buf = String::from("?");
 //!         
 //!         // Stuff to fill buf with the struct fields content
@@ -81,14 +84,20 @@ pub fn derive_query_params(input: TokenStream) -> TokenStream {
     let query_params = gen_serialization_query_params(&ast.body);
 
     let gen = quote! {
-        impl #impl_generics #name #ty_generics #where_clause {
-            fn to_query_params(&self) -> String {
+        impl #impl_generics query_params_trait::QueryParams for #name #ty_generics #where_clause {
+            fn query_params(&self) -> String {
                 #query_params
             }
         }
     };
 
-    gen.parse().expect(format!("An error occurred when parsing the tokens generate for {} struct",name).as_str())
+    gen.parse().expect(
+        format!(
+            "An error occurred when parsing the tokens generate for {} struct",
+            name
+        )
+        .as_str(),
+    )
 }
 
 /// yolo
@@ -97,26 +106,37 @@ fn gen_serialization_query_params(body: &Body) -> quote::Tokens {
         Body::Struct(VariantData::Struct(ref fs)) => {
             let query_params: Vec<quote::Tokens> = get_print_fields(fs);
 
-            quote! {
-                let mut buf = String::from("?");
+            if query_params.len() == 0 {
+                quote! {
+                    String::default()
+                }
+            } else {
+                quote! {
+                    let mut buf = String::new();
 
-                (#(#query_params),*);
+                    (#(#query_params),*);
 
-                let len_query_params = buf.len();
-                buf.truncate(len_query_params - 1); // remove trailing ampersand
+                    let len_query_params = buf.len();
+                    buf.truncate(len_query_params - 1); // remove trailing ampersand
 
-                return buf;
+                    buf
+                }
             }
         }
-        Body::Struct(VariantData::Tuple(_)) => panic!("#[derive(QueryParams)] is only defined for structs, not tuple"),
-        Body::Struct(VariantData::Unit) => panic!("#[derive(QueryParams)] is only defined for structs, not unit"),
+        Body::Struct(VariantData::Tuple(_)) => {
+            panic!("#[derive(QueryParams)] is only defined for structs, not tuple")
+        }
+        Body::Struct(VariantData::Unit) => {
+            panic!("#[derive(QueryParams)] is only defined for structs, not unit")
+        }
         Body::Enum(_) => panic!("#[derive(QueryParams)] is only defined for structs, not enum"),
     }
 }
 
 /// something cool
 fn get_print_fields(fields: &Vec<syn::Field>) -> Vec<quote::Tokens> {
-    fields.iter()
+    fields
+        .iter()
         .map(|f| (&f.ident, &f.ty))
         .map(|(ident, ty)| match ty {
             &syn::Ty::Path(_, ref path) => (ident, extract_type_name(path)),
@@ -130,12 +150,10 @@ fn get_print_fields(fields: &Vec<syn::Field>) -> Vec<quote::Tokens> {
         .collect()
 }
 
-
 #[inline]
 fn extract_type_name(path: &syn::Path) -> &str {
     path.segments.last().unwrap().ident.as_ref()
 }
-
 
 fn vec_to_query_params(ident: &Option<syn::Ident>) -> quote::Tokens {
     quote! {
@@ -151,7 +169,6 @@ fn vec_to_query_params(ident: &Option<syn::Ident>) -> quote::Tokens {
     }
 }
 
-
 fn option_to_query_params(ident: &Option<syn::Ident>) -> quote::Tokens {
     quote! {
         if self.#ident.is_some() {
@@ -160,9 +177,8 @@ fn option_to_query_params(ident: &Option<syn::Ident>) -> quote::Tokens {
     }
 }
 
-
 fn primitive_to_query_params(ident: &Option<syn::Ident>) -> quote::Tokens {
-    quote!{
+    quote! {
         buf.push_str(format!("{}={}&", stringify!(#ident), self.#ident).as_str())
     }
 }

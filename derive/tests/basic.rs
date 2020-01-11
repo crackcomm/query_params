@@ -1,5 +1,8 @@
 #[macro_use]
-extern crate query_params;
+extern crate query_params_derive;
+extern crate query_params_trait;
+
+use query_params_trait::QueryParams;
 
 #[derive(QueryParams)]
 struct ExampleStruct {
@@ -7,7 +10,7 @@ struct ExampleStruct {
     pub id: i32,
     running: bool,
     tags: Vec<String>,
-} 
+}
 
 #[test]
 fn test_ser_query_params_with_primitive_types() {
@@ -19,29 +22,27 @@ fn test_ser_query_params_with_primitive_types() {
     };
 
     assert_eq!(
-        example_struct.to_query_params(), 
-        "?server=All might&id=42&running=true&tags=latest,linux"
-    ); 
+        example_struct.query_params(),
+        "server=All might&id=42&running=true&tags=latest,linux"
+    );
 }
 
-
 #[derive(QueryParams)]
-struct EmptyStruct {} 
+struct EmptyStruct {}
 
 #[test]
 fn test_ser_for_empty_struct() {
-    let empty_struct = EmptyStruct{};
+    let empty_struct = EmptyStruct {};
 
-    assert_eq!(empty_struct.to_query_params(), ""); 
+    assert_eq!(empty_struct.query_params().len(), 0);
 }
-
 
 #[derive(QueryParams)]
 struct OptsStruct {
     pretty: Option<bool>,
     format: Option<String>,
     depth: Option<i32>,
-} 
+}
 
 #[test]
 fn test_ser_with_optional_fields() {
@@ -51,5 +52,5 @@ fn test_ser_with_optional_fields() {
         depth: None,
     };
 
-    assert_eq!(opts_struct.to_query_params(), "?pretty=true&format=json"); 
+    assert_eq!(opts_struct.query_params(), "pretty=true&format=json");
 }

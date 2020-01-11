@@ -1,0 +1,14 @@
+[package]
+name = "query-params-trait"
+version = "0.0.1"
+authors = ["Łukasz Kurowski <crackcomm@gmail.com>"]
+description = "Query parameters trait."
+homepage = "https://github.com/crackcomm/query_params"
+repository = "https://github.com/crackcomm/query_params"
+documentation = "https://docs.rs/query-params-trait"
+categories = ["development-tools"]
+keywords = ["derive", "macro", "http", "trait"]
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
