@@ -1,6 +1,6 @@
 [package]
 name = "query-params-trait"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Łukasz Kurowski <crackcomm@gmail.com>"]
 description = "Query parameters trait."
 homepage = "https://github.com/crackcomm/query_params"
@@ -10,4 +10,4 @@ license = "GPL-3.0"
 
 [dependencies]
 serde = "^1.0.0"
-query-params-serialize = { version = "^0.0.1", path = "../serialize" }
+query-params-serialize = { version = "^0.0.2", path = "../serialize" }

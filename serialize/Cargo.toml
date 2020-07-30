@@ -1,6 +1,6 @@
 [package]
 name = "query-params-serialize"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Łukasz Kurowski <crackcomm@gmail.com>"]
 description = "Query parameters serde serializer."
 homepage = "https://github.com/crackcomm/query_params"
